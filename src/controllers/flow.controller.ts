@@ -2,20 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { IFlowService } from '../services/flow.service';
 import { Flow, FlowSchema, FlowStatusSchema } from '../schemas/flow.schema';
+import { pruneUndefined } from '../utils/object';
 
 const pickFirstQueryValue = (value: unknown): unknown => (Array.isArray(value) ? value[0] : value);
 const QueryStringSchema = z.preprocess(pickFirstQueryValue, z.string());
 const QueryStatusSchema = z.preprocess(pickFirstQueryValue, FlowStatusSchema);
 
-const FlowUpdateSchema = FlowSchema.partial().transform(data => {
-  const sanitized: Partial<Flow> = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (value !== undefined) {
-      sanitized[key as keyof Flow] = value as Flow[keyof Flow];
-    }
-  }
-  return sanitized;
-});
+const FlowUpdateSchema = FlowSchema.partial();
 
 const FlowListQuerySchema = z.object({
   orgId: QueryStringSchema,
@@ -58,7 +51,8 @@ export class FlowController {
   updateFlow = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params as { id: string };
-      const updates = FlowUpdateSchema.parse(req.body);
+      const parsedUpdates = FlowUpdateSchema.parse(req.body) as Partial<Flow>;
+      const updates = pruneUndefined<Flow>(parsedUpdates);
       const flow = await this.flowService.updateFlow(id, updates);
       res.json(flow);
     } catch (error) {

@@ -37,20 +37,20 @@ export class ContactRepository implements IContactRepository {
   }
 
   async findOrCreateByWaId(orgId: string, waId: string, name?: string): Promise<ContactDocument> {
-    let contact = await this.findByWaId(orgId, waId);
+    const defaults: Contact = {
+      orgId,
+      waId,
+      name: name || waId,
+      tags: [],
+      customFields: {},
+      optIn: true,
+    };
 
-    if (!contact) {
-      contact = await this.create({
-        orgId,
-        waId,
-        name: name || waId,
-        tags: [],
-        customFields: {},
-        optIn: true,
-      });
-    }
-
-    return contact;
+    return await ContactModel.findOneAndUpdate(
+      { orgId, waId },
+      { $setOnInsert: defaults },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    ).exec();
   }
 
   async findByOrgId(orgId: string): Promise<ContactDocument[]> {
