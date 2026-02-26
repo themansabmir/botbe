@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Session, SessionStatus } from '../schemas/session.schema';
+import { Session } from '../schemas/session.schema';
 
 export interface SessionDocument extends Omit<Session, '_id'>, Document {}
 
@@ -25,9 +25,10 @@ const SessionSchema = new Schema<SessionDocument>({
   flowVersion: { type: Number, required: true },
   contactId: { type: String, required: true, index: true },
   waId: { type: String, required: true, index: true },
-  status: { 
-    type: String, 
-    enum: ['active', 'waiting', 'completed', 'timed_out', 'error'], 
+  waBusinessNumber: { type: String, required: true, index: true },
+  status: {
+    type: String,
+    enum: ['active', 'waiting', 'completed', 'timed_out', 'error'],
     required: true,
     default: 'active',
   },
@@ -35,6 +36,7 @@ const SessionSchema = new Schema<SessionDocument>({
   variables: { type: Schema.Types.Mixed, default: {} },
   history: { type: [SessionHistoryStepSchema], default: [] },
   waitingFor: { type: WaitingForSchema },
+  isCurrent: { type: Boolean, default: true, index: true },
 }, {
   timestamps: true,
 });
@@ -42,5 +44,6 @@ const SessionSchema = new Schema<SessionDocument>({
 SessionSchema.index({ waId: 1, status: 1 });
 SessionSchema.index({ flowId: 1, status: 1 });
 SessionSchema.index({ 'waitingFor.timeoutAt': 1 }, { sparse: true });
+SessionSchema.index({ waBusinessNumber: 1, waId: 1, isCurrent: 1 });
 
 export const SessionModel = mongoose.model<SessionDocument>('Session', SessionSchema);

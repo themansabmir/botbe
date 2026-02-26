@@ -6,6 +6,8 @@ import { Container } from './container';
 import { createFlowRouter } from './routes/flows.route';
 import { createContactRouter } from './routes/contacts.route';
 import { createNodeTypesRouter } from './routes/node-types.route';
+import { createWhatsAppWebhookRouter } from './routes/whatsapp-webhook.route';
+import { createChatSessionRouter } from './routes/chat-sessions.route';
 import { errorHandler } from './middleware/error.middleware';
 
 export function createApp(): Application {
@@ -25,6 +27,8 @@ export function createApp(): Application {
   app.use('/api/flows', createFlowRouter(container.flowController));
   app.use('/api/contacts', createContactRouter(container.contactController));
   app.use('/api/node-types', createNodeTypesRouter(container.nodeTypesController));
+  app.use('/api/webhooks/whatsapp', createWhatsAppWebhookRouter(container.whatsappWebhookController));
+  app.use('/api/chat-sessions', createChatSessionRouter(container.chatSessionController));
 
   app.use(errorHandler);
 

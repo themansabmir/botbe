@@ -8,6 +8,7 @@ export interface IFlowRepository {
   findByIdOrFail(id: string): Promise<FlowDocument>;
   findByOrgId(orgId: string, status?: FlowStatus): Promise<FlowDocument[]>;
   findPublishedByKeyword(keyword: string): Promise<FlowDocument | null>;
+  findPublishedByOrgAndKeyword(orgId: string, keyword: string): Promise<FlowDocument | null>;
   update(id: string, updates: Partial<Flow>): Promise<FlowDocument>;
   delete(id: string): Promise<void>;
 }
@@ -40,6 +41,14 @@ export class FlowRepository implements IFlowRepository {
 
   async findPublishedByKeyword(keyword: string): Promise<FlowDocument | null> {
     return await FlowModel.findOne({
+      status: 'published',
+      'triggerConfig.keywords': keyword.toLowerCase(),
+    }).exec();
+  }
+
+  async findPublishedByOrgAndKeyword(orgId: string, keyword: string): Promise<FlowDocument | null> {
+    return await FlowModel.findOne({
+      orgId,
       status: 'published',
       'triggerConfig.keywords': keyword.toLowerCase(),
     }).exec();

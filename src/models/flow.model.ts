@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Flow, FlowStatus, TriggerType } from '../schemas/flow.schema';
+import { Flow } from '../schemas/flow.schema';
 
 export interface FlowDocument extends Omit<Flow, '_id'>, Document {}
 

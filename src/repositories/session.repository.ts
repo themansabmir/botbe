@@ -8,6 +8,10 @@ export interface ISessionRepository {
   findByIdOrFail(id: string): Promise<SessionDocument>;
   findActiveByWaId(waId: string): Promise<SessionDocument | null>;
   findByFlowId(flowId: string, status?: SessionStatus): Promise<SessionDocument[]>;
+  findByStatus(status: SessionStatus): Promise<SessionDocument[]>;
+  findTimedOut(): Promise<SessionDocument[]>;
+  findCurrentByWhatsApp(waBusinessNumber: string, waId: string): Promise<SessionDocument | null>;
+  clearCurrentFlags(waBusinessNumber: string, waId: string): Promise<void>;
   update(id: string, updates: Partial<Session>): Promise<SessionDocument>;
   updateStatus(id: string, status: SessionStatus): Promise<SessionDocument>;
   delete(id: string): Promise<void>;
@@ -60,6 +64,32 @@ export class SessionRepository implements ISessionRepository {
     }
 
     return session;
+  }
+
+  async findByStatus(status: SessionStatus): Promise<SessionDocument[]> {
+    return await SessionModel.find({ status }).exec();
+  }
+
+  async findTimedOut(): Promise<SessionDocument[]> {
+    return await SessionModel.find({
+      status: 'waiting',
+      'waitingFor.timeoutAt': { $lte: new Date() },
+    }).exec();
+  }
+
+  async findCurrentByWhatsApp(waBusinessNumber: string, waId: string): Promise<SessionDocument | null> {
+    return await SessionModel.findOne({
+      waBusinessNumber,
+      waId,
+      isCurrent: true,
+      status: { $in: ['active', 'waiting'] },
+    })
+      .sort({ updatedAt: -1 })
+      .exec();
+  }
+
+  async clearCurrentFlags(waBusinessNumber: string, waId: string): Promise<void> {
+    await SessionModel.updateMany({ waBusinessNumber, waId, isCurrent: true }, { $set: { isCurrent: false } }).exec();
   }
 
   async updateStatus(id: string, status: SessionStatus): Promise<SessionDocument> {

@@ -6,8 +6,14 @@ import { ContactService, IContactService } from './services/contact.service';
 import { FlowController } from './controllers/flow.controller';
 import { ContactController } from './controllers/contact.controller';
 import { NodeTypesController } from './controllers/node-types.controller';
+import { WhatsAppWebhookController } from './controllers/whatsapp-webhook.controller';
 import { VariableResolver } from './engine/variable-resolver';
 import { ConditionEvaluator } from './engine/condition-evaluator';
+import { NodeExecutor } from './chat-session/node-executor';
+import { FlowOrchestrator } from './chat-session/flow-orchestrator';
+import { IFlowOrchestrator } from './chat-session/flow-orchestrator.interface';
+import { ChatSessionController } from './chat-session/chat-session.controller';
+import { WhatsAppWebhookService } from './services/whatsapp-webhook.service';
 
 export class Container {
   private static instance: Container;
@@ -22,9 +28,14 @@ export class Container {
   public readonly flowController: FlowController;
   public readonly contactController: ContactController;
   public readonly nodeTypesController: NodeTypesController;
+  public readonly chatSessionController: ChatSessionController;
+  public readonly whatsappWebhookController: WhatsAppWebhookController;
 
   public readonly variableResolver: VariableResolver;
   public readonly conditionEvaluator: ConditionEvaluator;
+  public readonly nodeExecutor: NodeExecutor;
+  public readonly flowOrchestrator: IFlowOrchestrator;
+  public readonly whatsappWebhookService: WhatsAppWebhookService;
 
   private constructor() {
     this.flowRepository = new FlowRepository();
@@ -40,6 +51,21 @@ export class Container {
 
     this.variableResolver = new VariableResolver();
     this.conditionEvaluator = new ConditionEvaluator(this.variableResolver);
+    this.nodeExecutor = new NodeExecutor(this.variableResolver, this.conditionEvaluator);
+    this.flowOrchestrator = new FlowOrchestrator(
+      this.flowRepository,
+      this.sessionRepository,
+      this.contactRepository,
+      this.nodeExecutor,
+    );
+    this.chatSessionController = new ChatSessionController(this.flowOrchestrator);
+    this.whatsappWebhookService = new WhatsAppWebhookService(
+      this.flowRepository,
+      this.contactService,
+      this.sessionRepository,
+      this.flowOrchestrator,
+    );
+    this.whatsappWebhookController = new WhatsAppWebhookController(this.whatsappWebhookService);
   }
 
   public static getInstance(): Container {

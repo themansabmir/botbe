@@ -32,11 +32,13 @@ export const SessionSchema = z.object({
   flowVersion: z.number(),
   contactId: z.string(),
   waId: z.string(),
+  waBusinessNumber: z.string(),
   status: SessionStatusSchema,
   currentNodeId: z.string(),
   variables: z.record(z.any()),
   history: z.array(SessionHistoryStepSchema),
   waitingFor: WaitingForSchema.optional(),
+  isCurrent: z.boolean().default(true),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
 });
