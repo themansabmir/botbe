@@ -54,7 +54,7 @@ export class DirectWhatsAppSender implements IWhatsAppSender {
         break;
 
       case NodeType.SEND_DOCUMENT:
-        await this.apiService.sendDocument(waId, payload.url, payload.caption);
+        await this.apiService.sendDocument(waId, payload.url, payload.caption, payload.filename);
         break;
 
       case NodeType.SEND_LOCATION:

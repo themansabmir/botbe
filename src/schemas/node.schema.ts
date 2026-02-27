@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { NodeType } from './node-types.enum';
 import { NodeDataSchema } from './node-data.schema';
+export { InteractionModeSchema, NodeInteractionSchema } from './node-interaction.schema';
+export type { NodeInteraction } from './node-interaction.schema';
 
 export const BranchSchema = z.object({
   key: z.string(),

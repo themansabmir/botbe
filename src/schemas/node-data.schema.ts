@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { NodeType } from './node-types.enum';
 import { ConditionExpressionSchema } from './condition.schema';
 import { VariableAssignmentSchema, InputTypeSchema, ValidationRuleSchema } from './variable.schema';
+import { NodeInteractionSchema } from './node-interaction.schema';
 
 const SendTextDataSchema = z.object({
   message: z.string(),
@@ -28,7 +29,8 @@ const SendButtonsDataSchema = z.object({
       title: z.string(),
     })
   ).max(3),
-  timeoutSeconds: z.number(),
+  timeoutSeconds: z.number().optional(),
+  interaction: NodeInteractionSchema.optional(),
 });
 
 const SendListDataSchema = z.object({
@@ -47,13 +49,20 @@ const SendListDataSchema = z.object({
       ),
     })
   ),
-  timeoutSeconds: z.number(),
+  timeoutSeconds: z.number().optional(),
+  interaction: NodeInteractionSchema.optional(),
+});
+
+const SendDocumentDataSchema = z.object({
+  url: z.string().url(),
+  caption: z.string().optional(),
+  filename: z.string().optional(),
 });
 
 const SendTemplateDataSchema = z.object({
   templateName: z.string(),
   languageCode: z.string(),
-  components: z.array(z.any()),
+  components: z.array(z.any()).optional(),
 });
 
 const AskQuestionDataSchema = z.object({
@@ -134,7 +143,7 @@ export const NodeDataSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal(NodeType.SEND_IMAGE), ...SendMediaDataSchema.shape }),
   z.object({ type: z.literal(NodeType.SEND_VIDEO), ...SendMediaDataSchema.shape }),
   z.object({ type: z.literal(NodeType.SEND_AUDIO), ...SendMediaDataSchema.shape }),
-  z.object({ type: z.literal(NodeType.SEND_DOCUMENT), ...SendMediaDataSchema.shape }),
+  z.object({ type: z.literal(NodeType.SEND_DOCUMENT), ...SendDocumentDataSchema.shape }),
   z.object({ type: z.literal(NodeType.SEND_LOCATION), ...SendLocationDataSchema.shape }),
   z.object({ type: z.literal(NodeType.SEND_BUTTONS), ...SendButtonsDataSchema.shape }),
   z.object({ type: z.literal(NodeType.SEND_LIST), ...SendListDataSchema.shape }),

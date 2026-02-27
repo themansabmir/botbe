@@ -44,12 +44,11 @@ export class WhatsAppWebhookController {
       // Process asynchronously
       const payload = req.body as WhatsAppWebhookPayload;
 
-      console.log("PAYLOAD", payload)
+      console.log(JSON.stringify(payload, null,2))
       
       // Normalize payload
       const message = this.normalizer.normalize(orgId, payload);
       if (!message) {
-        console.log('[Webhook] No valid message found in payload');
         return;
       }
 

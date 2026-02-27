@@ -12,14 +12,6 @@ const SessionHistoryStepSchema = new Schema({
   userInput: { type: String },
 }, { _id: false });
 
-const WaitingForSchema = new Schema({
-  type: { type: String, enum: ['user_input'], required: true },
-  variableName: { type: String, required: true },
-  variableScope: { type: String, enum: ['session', 'contact'], required: true },
-  since: { type: Date, required: true },
-  timeoutAt: { type: Date, required: true },
-}, { _id: false });
-
 const SessionSchema = new Schema<SessionDocument>({
   flowId: { type: String, required: true, index: true },
   flowVersion: { type: Number, required: true },
@@ -35,7 +27,7 @@ const SessionSchema = new Schema<SessionDocument>({
   currentNodeId: { type: String, required: true },
   variables: { type: Schema.Types.Mixed, default: {} },
   history: { type: [SessionHistoryStepSchema], default: [] },
-  waitingFor: { type: WaitingForSchema },
+  waitingFor: { type: Schema.Types.Mixed },
   isCurrent: { type: Boolean, default: true, index: true },
 }, {
   timestamps: true,

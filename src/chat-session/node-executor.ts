@@ -50,10 +50,10 @@ export class NodeExecutor {
         return this.handleSendLocation(currentNode, context, enteredAt, traverser);
 
       case NodeType.SEND_BUTTONS:
-        return this.handleSendButtons(currentNode, context, enteredAt, traverser);
+        return this.handleSendButtons(currentNode, context, enteredAt, traverser, userInput);
 
       case NodeType.SEND_LIST:
-        return this.handleSendList(currentNode, context, enteredAt, traverser);
+        return this.handleSendList(currentNode, context, enteredAt, traverser, userInput);
 
       case NodeType.SEND_TEMPLATE:
         return this.handleSendTemplate(currentNode, context, enteredAt, traverser);
@@ -188,9 +188,80 @@ export class NodeExecutor {
     context: VariableContext,
     enteredAt: Date,
     traverser: GraphTraverser,
+    userInput?: string,
   ): ExecutionResult {
     const body = this.resolveText(node.data.body, context);
     const footer = node.data.footer ? this.resolveText(node.data.footer, context) : undefined;
+    const interaction = node.data.interaction;
+
+    // If node is configured as input mode and we don't have userInput yet, wait for it
+    if (interaction?.mode === 'input' && userInput === undefined) {
+      const since = new Date();
+      const timeoutSeconds = interaction.input?.timeoutSeconds ?? 300;
+      const timeoutAt = new Date(since.getTime() + timeoutSeconds * 1000);
+
+      const options =
+        interaction.input?.options ??
+        node.data.buttons?.map((b: { id: string; label: string }) => ({
+          id: b.id,
+          label: b.label,
+          branchKey: b.id,
+        })) ??
+        [];
+
+      return {
+        nextNodeId: node.id,
+        outboundMessages: [{ type: node.type, payload: { body, footer, buttons: node.data.buttons } }],
+        variableMutations: [],
+        isTerminal: false,
+        waitForInput: {
+          type: 'choice',
+          options,
+          defaultBranchKey: interaction.input?.defaultBranchKey,
+          variableName: interaction.input?.variableName,
+          variableScope: interaction.input?.variableScope,
+          since,
+          timeoutAt,
+        },
+        historyStep: {
+          nodeId: node.id,
+          nodeType: node.type,
+          enteredAt,
+        },
+      };
+    }
+
+    // If we have userInput and this is an input node, map to branch
+    if (interaction?.mode === 'input' && userInput !== undefined) {
+      const options = interaction.input?.options ??
+        node.data.buttons?.map((b: { id: string; label: string }) => ({
+          id: b.id,
+          branchKey: b.id,
+        })) ?? [];
+
+      const selectedOption = options.find((opt: { id: string }) => opt.id === userInput);
+      const branchKey = selectedOption?.branchKey ?? interaction.input?.defaultBranchKey ?? 'default';
+
+      const mutations: VariableMutation[] = [];
+      if (interaction.input?.variableName && interaction.input?.variableScope) {
+        mutations.push({
+          scope: interaction.input.variableScope,
+          key: interaction.input.variableName,
+          value: userInput,
+        });
+      }
+
+      const result = this.buildResult(node, branchKey, enteredAt, traverser, [], mutations);
+      return {
+        ...result,
+        historyStep: {
+          ...result.historyStep,
+          userInput,
+        },
+      };
+    }
+
+    // Output mode - just send and continue
     return this.buildResult(node, 'default', enteredAt, traverser, [
       { type: node.type, payload: { body, footer, buttons: node.data.buttons } },
     ], []);
@@ -201,8 +272,86 @@ export class NodeExecutor {
     context: VariableContext,
     enteredAt: Date,
     traverser: GraphTraverser,
+    userInput?: string,
   ): ExecutionResult {
     const body = this.resolveText(node.data.body, context);
+    const interaction = node.data.interaction;
+
+    // If node is configured as input mode and we don't have userInput yet, wait for it
+    if (interaction?.mode === 'input' && userInput === undefined) {
+      const since = new Date();
+      const timeoutSeconds = interaction.input?.timeoutSeconds ?? 300;
+      const timeoutAt = new Date(since.getTime() + timeoutSeconds * 1000);
+
+      // Build options from sections
+      const listOptions =
+        interaction.input?.options ??
+        node.data.sections?.flatMap((section: { rows: Array<{ id: string; title: string }> }) =>
+          section.rows?.map((row: { id: string; title: string }) => ({
+            id: row.id,
+            label: row.title,
+            branchKey: row.id,
+          }))
+        ) ??
+        [];
+
+      return {
+        nextNodeId: node.id,
+        outboundMessages: [{ type: node.type, payload: { body, buttonTitle: node.data.buttonTitle, sections: node.data.sections } }],
+        variableMutations: [],
+        isTerminal: false,
+        waitForInput: {
+          type: 'choice',
+          options: listOptions,
+          defaultBranchKey: interaction.input?.defaultBranchKey,
+          variableName: interaction.input?.variableName,
+          variableScope: interaction.input?.variableScope,
+          since,
+          timeoutAt,
+        },
+        historyStep: {
+          nodeId: node.id,
+          nodeType: node.type,
+          enteredAt,
+        },
+      };
+    }
+
+    // If we have userInput and this is an input node, map to branch
+    if (interaction?.mode === 'input' && userInput !== undefined) {
+      const options =
+        interaction.input?.options ??
+        node.data.sections?.flatMap((section: { rows: Array<{ id: string; title: string }> }) =>
+          section.rows?.map((row: { id: string; title: string }) => ({
+            id: row.id,
+            branchKey: row.id,
+          }))
+        ) ??
+        [];
+
+      const selectedOption = options.find((opt: { id: string }) => opt.id === userInput);
+      const branchKey = selectedOption?.branchKey ?? interaction.input?.defaultBranchKey ?? 'default';
+
+      const mutations: VariableMutation[] = [];
+      if (interaction.input?.variableName && interaction.input?.variableScope) {
+        mutations.push({
+          scope: interaction.input.variableScope,
+          key: interaction.input.variableName,
+          value: userInput,
+        });
+      }
+
+      const result = this.buildResult(node, branchKey, enteredAt, traverser, [], mutations);
+      return {
+        ...result,
+        historyStep: {
+          ...result.historyStep,
+          userInput,
+        },
+      };
+    }
+
+    // Output mode - just send and continue
     return this.buildResult(node, 'default', enteredAt, traverser, [
       { type: node.type, payload: { body, buttonTitle: node.data.buttonTitle, sections: node.data.sections } },
     ], []);
@@ -239,7 +388,7 @@ export class NodeExecutor {
         variableMutations: [],
         isTerminal: false,
         waitForInput: {
-          type: 'user_input',
+          type: 'text',
           variableName,
           variableScope,
           since,

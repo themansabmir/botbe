@@ -63,7 +63,7 @@ export class WhatsAppAPIService {
     await this.callAPI(payload);
   }
 
-  async sendDocument(to: string, url: string, caption?: string): Promise<void> {
+  async sendDocument(to: string, url: string, caption?: string, filename?: string): Promise<void> {
     const payload: any = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
@@ -73,6 +73,9 @@ export class WhatsAppAPIService {
     };
     if (caption) {
       payload.document.caption = caption;
+    }
+    if (filename) {
+      payload.document.filename = filename;
     }
     await this.callAPI(payload);
   }

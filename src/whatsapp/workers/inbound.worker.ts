@@ -46,9 +46,18 @@ export function createInboundWorker(): Worker<InboundJobData> {
         if (activeSession) {
           // Resume existing flow
           console.log(`[InboundWorker] Resuming session ${activeSession._id} for ${waId}`);
+          
+          // Check if session is waiting for choice input
+          const waitingFor = activeSession.waitingFor;
+          let userInput = text;
+          if (waitingFor?.type === 'choice' && message.interactiveOptionId) {
+            userInput = message.interactiveOptionId;
+            console.log(`[InboundWorker] Using interactive option ID: ${userInput}`);
+          }
+          
           result = await flowOrchestrator.resumeFlow({
             sessionId: String(activeSession._id),
-            userInput: text,
+            userInput,
           });
         } else {
           // Find matching flow by keyword
