@@ -59,7 +59,7 @@ export class NodeExecutor {
         return this.handleSendTemplate(currentNode, context, enteredAt, traverser);
 
       case NodeType.ASK_QUESTION:
-        return this.handleAskQuestion(currentNode, context, enteredAt, userInput);
+        return this.handleAskQuestion(currentNode, context, enteredAt, traverser, userInput);
 
       case NodeType.CONDITION:
         return this.handleCondition(currentNode, context, enteredAt, traverser);
@@ -224,6 +224,7 @@ export class NodeExecutor {
     node: Node,
     context: VariableContext,
     enteredAt: Date,
+    traverser: GraphTraverser,
     userInput?: string,
   ): ExecutionResult {
     const { variableName, variableScope, timeoutSeconds, message } = node.data;
@@ -252,16 +253,19 @@ export class NodeExecutor {
       };
     }
 
+    const result = this.buildResult(
+      node,
+      'default',
+      enteredAt,
+      traverser,
+      [],
+      [{ scope: variableScope, key: variableName, value: userInput }],
+    );
+
     return {
-      nextNodeId: node.id,
-      outboundMessages: [],
-      variableMutations: [{ scope: variableScope, key: variableName, value: userInput }],
-      isTerminal: false,
+      ...result,
       historyStep: {
-        nodeId: node.id,
-        nodeType: node.type,
-        enteredAt,
-        exitedAt: new Date(),
+        ...result.historyStep,
         userInput,
       },
     };

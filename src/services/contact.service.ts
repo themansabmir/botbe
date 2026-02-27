@@ -1,6 +1,7 @@
 import { IContactRepository } from '../repositories/contact.repository';
 import { ContactDocument } from '../models/contact.model';
 import { Contact } from '../schemas/contact.schema';
+import { normalizeWaId } from '../utils/whatsapp';
 
 export interface IContactService {
   createContact(contact: Contact): Promise<ContactDocument>;
@@ -25,11 +26,11 @@ export class ContactService implements IContactService {
   }
 
   async getContactByWaId(orgId: string, waId: string): Promise<ContactDocument | null> {
-    return await this.contactRepository.findByWaId(orgId, waId);
+    return await this.contactRepository.findByWaId(orgId, normalizeWaId(waId));
   }
 
   async getOrCreateContactByWaId(orgId: string, waId: string, name?: string): Promise<ContactDocument> {
-    return await this.contactRepository.findOrCreateByWaId(orgId, waId, name);
+    return await this.contactRepository.findOrCreateByWaId(orgId, normalizeWaId(waId), name);
   }
 
   async getContactsByOrgId(orgId: string): Promise<ContactDocument[]> {

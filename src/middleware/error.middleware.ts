@@ -9,6 +9,7 @@ export function errorHandler(
   _next: NextFunction
 ): void {
   if (error instanceof ZodError) {
+    console.error('Validation Error Details:', JSON.stringify(error.errors, null, 2));
     res.status(400).json({
       error: 'Validation Error',
       message: 'Invalid request data',
@@ -18,6 +19,7 @@ export function errorHandler(
   }
 
   if (error instanceof AppError) {
+    console.error(`[${error.constructor.name}] ${error.message}`);
     res.status(error.statusCode).json({
       error: error.constructor.name,
       message: error.message,
@@ -30,8 +32,8 @@ export function errorHandler(
 
   res.status(500).json({
     error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'production' 
-      ? 'An unexpected error occurred' 
+    message: process.env.NODE_ENV === 'production'
+      ? 'An unexpected error occurred'
       : error.message,
   });
 }

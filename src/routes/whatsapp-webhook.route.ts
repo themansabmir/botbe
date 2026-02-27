@@ -6,6 +6,7 @@ export function createWhatsAppWebhookRouter(controller: WhatsAppWebhookControlle
 
   router.get('/:orgId', controller.verify);
   router.post('/:orgId', controller.handle);
+  router.post('/webhook', controller.handle);
 
   return router;
 }

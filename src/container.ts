@@ -3,6 +3,7 @@ import { SessionRepository, ISessionRepository } from './repositories/session.re
 import { ContactRepository, IContactRepository } from './repositories/contact.repository';
 import { FlowService, IFlowService } from './services/flow.service';
 import { ContactService, IContactService } from './services/contact.service';
+import { IWhatsAppSender, DirectWhatsAppSender, StubWhatsAppSender } from './services/whatsapp-sender.service';
 import { FlowController } from './controllers/flow.controller';
 import { ContactController } from './controllers/contact.controller';
 import { NodeTypesController } from './controllers/node-types.controller';
@@ -13,7 +14,6 @@ import { NodeExecutor } from './chat-session/node-executor';
 import { FlowOrchestrator } from './chat-session/flow-orchestrator';
 import { IFlowOrchestrator } from './chat-session/flow-orchestrator.interface';
 import { ChatSessionController } from './chat-session/chat-session.controller';
-import { WhatsAppWebhookService } from './services/whatsapp-webhook.service';
 
 export class Container {
   private static instance: Container;
@@ -35,7 +35,7 @@ export class Container {
   public readonly conditionEvaluator: ConditionEvaluator;
   public readonly nodeExecutor: NodeExecutor;
   public readonly flowOrchestrator: IFlowOrchestrator;
-  public readonly whatsappWebhookService: WhatsAppWebhookService;
+  public readonly whatsappSender: IWhatsAppSender;
 
   private constructor() {
     this.flowRepository = new FlowRepository();
@@ -58,14 +58,23 @@ export class Container {
       this.contactRepository,
       this.nodeExecutor,
     );
-    this.chatSessionController = new ChatSessionController(this.flowOrchestrator);
-    this.whatsappWebhookService = new WhatsAppWebhookService(
-      this.flowRepository,
-      this.contactService,
-      this.sessionRepository,
+
+    // Initialize WhatsApp sender (direct or stub based on config)
+    if (process.env.WHATSAPP_API_URL && process.env.WHATSAPP_API_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID) {
+      this.whatsappSender = new DirectWhatsAppSender({
+        apiUrl: process.env.WHATSAPP_API_URL,
+        apiToken: process.env.WHATSAPP_API_TOKEN,
+        phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+      });
+    } else {
+      this.whatsappSender = new StubWhatsAppSender();
+    }
+    this.chatSessionController = new ChatSessionController(
       this.flowOrchestrator,
+      this.contactService,
+      this.whatsappSender,
     );
-    this.whatsappWebhookController = new WhatsAppWebhookController(this.whatsappWebhookService);
+    this.whatsappWebhookController = new WhatsAppWebhookController();
   }
 
   public static getInstance(): Container {

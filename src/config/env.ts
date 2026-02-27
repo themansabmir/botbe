@@ -8,6 +8,7 @@ const envSchema = z.object({
   WHATSAPP_API_URL: z.string().url().optional(),
   WHATSAPP_API_TOKEN: z.string().optional(),
   WHATSAPP_VERIFY_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

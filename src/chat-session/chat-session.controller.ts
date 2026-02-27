@@ -1,14 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { IFlowOrchestrator } from './flow-orchestrator.interface';
+import { IContactService } from '../services/contact.service';
+import { IWhatsAppSender } from '../services/whatsapp-sender.service';
 import { ValidationError } from '../utils/errors';
+import { normalizeWaId } from '../utils/whatsapp';
 
 const StartFlowBodySchema = z.object({
   orgId: z.string().min(1),
   flowId: z.string().min(1),
-  contactId: z.string().min(1),
   waId: z.string().min(1),
   waBusinessNumber: z.string().min(1),
+  contactName: z.string().optional(),
   initialVariables: z.record(z.any()).optional(),
 });
 
@@ -17,7 +20,11 @@ const ResumeFlowBodySchema = z.object({
 });
 
 export class ChatSessionController {
-  constructor(private readonly orchestrator: IFlowOrchestrator) {}
+  constructor(
+    private readonly orchestrator: IFlowOrchestrator,
+    private readonly contactService: IContactService,
+    private readonly whatsappSender: IWhatsAppSender,
+  ) {}
 
   startFlow = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -26,11 +33,30 @@ export class ChatSessionController {
         throw new ValidationError(parsed.error.message);
       }
 
+      const { orgId, flowId, waId, waBusinessNumber, contactName, initialVariables } = parsed.data;
+      const normalizedWaId = normalizeWaId(waId);
+
+      // Find or create contact by waId
+      const contact = await this.contactService.getOrCreateContactByWaId(orgId, normalizedWaId, contactName);
+
       const result = await this.orchestrator.startFlow({
-        ...parsed.data,
-        initialVariables: parsed.data.initialVariables ?? {},
-        waBusinessNumber: parsed.data.waBusinessNumber,
+        orgId,
+        flowId,
+        contactId: String(contact._id),
+        waId: normalizedWaId,
+        waBusinessNumber,
+        initialVariables: initialVariables ?? {},
       });
+
+      // Send outbound messages to WhatsApp immediately
+      if (result.outboundMessages.length > 0) {
+        await this.whatsappSender.sendMessages(
+          normalizedWaId,
+          result.outboundMessages,
+          String(result.session._id)
+        );
+      }
+
       res.status(201).json(result);
     } catch (err) {
       next(err);
@@ -53,6 +79,17 @@ export class ChatSessionController {
         sessionId,
         userInput: parsed.data.userInput,
       });
+
+      // Get session to retrieve waId for sending messages
+      const session = await this.orchestrator.getSessionById(sessionId);
+      if (result.outboundMessages.length > 0 && session) {
+        await this.whatsappSender.sendMessages(
+          session.waId,
+          result.outboundMessages,
+          sessionId
+        );
+      }
+
       res.status(200).json(result);
     } catch (err) {
       next(err);

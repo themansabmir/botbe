@@ -1,9 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
-import { WhatsAppWebhookService } from '../services/whatsapp-webhook.service';
+import { WhatsAppNormalizer } from '../whatsapp/normalizer';
+import { WhatsAppDeduplicator } from '../whatsapp/deduplicator';
+import { enqueueInboundMessage } from '../lib/queue';
+import { getRedisClient } from '../lib/redis';
 import { ValidationError } from '../utils/errors';
+import type { WhatsAppWebhookPayload } from '../whatsapp/types';
 
 export class WhatsAppWebhookController {
-  constructor(private readonly webhookService: WhatsAppWebhookService) {}
+  private readonly normalizer: WhatsAppNormalizer;
+  private readonly deduplicator: WhatsAppDeduplicator;
+
+  constructor() {
+    this.normalizer = new WhatsAppNormalizer();
+    const redis = getRedisClient();
+    this.deduplicator = new WhatsAppDeduplicator(redis);
+  }
 
   verify = async (req: Request, res: Response): Promise<void> => {
     const mode = req.query['hub.mode'];
@@ -21,20 +32,41 @@ export class WhatsAppWebhookController {
 
   handle = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const orgId = String(req.params['orgId']);
+      const orgId = "68b08633907a113536238290"
+      // String(req.params['orgId']);
       if (!orgId) {
         throw new ValidationError('orgId param is required');
       }
 
-      const result = await this.webhookService.handleIncomingMessage(orgId, req.body);
-      if (!result) {
-        res.status(204).send();
+      // Return 200 immediately to Meta (async processing)
+      res.status(200).json({ status: 'accepted' });
+
+      // Process asynchronously
+      const payload = req.body as WhatsAppWebhookPayload;
+
+      console.log("PAYLOAD", payload)
+      
+      // Normalize payload
+      const message = this.normalizer.normalize(orgId, payload);
+      if (!message) {
+        console.log('[Webhook] No valid message found in payload');
         return;
       }
 
-      res.status(200).json(result);
+      // Check for duplicates
+      const isDuplicate = await this.deduplicator.isDuplicate(message.messageId);
+      if (isDuplicate) {
+        console.log(`[Webhook] Duplicate message ${message.messageId} ignored`);
+        return;
+      }
+
+      // Enqueue for processing
+      await enqueueInboundMessage(message);
+      console.log(`[Webhook] Enqueued message ${message.messageId} for ${orgId}`);
+
     } catch (error) {
-      next(error);
+      // Log error but don't send error response (we already sent 200)
+      console.error('[Webhook] Error processing webhook:', error);
     }
   };
 }
