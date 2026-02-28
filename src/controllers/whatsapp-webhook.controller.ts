@@ -30,7 +30,7 @@ export class WhatsAppWebhookController {
     res.status(403).send('Forbidden');
   };
 
-  handle = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  handle = async (req: Request, res: Response, _: NextFunction): Promise<void> => {
     try {
       const orgId = "68b08633907a113536238290"
       // String(req.params['orgId']);

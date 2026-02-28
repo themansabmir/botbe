@@ -101,7 +101,7 @@ export class StubWhatsAppSender implements IWhatsAppSender {
   async sendMessages(
     waId: string,
     messages: OutboundMessage[],
-    sessionId?: string
+    // sessionId?: string
   ): Promise<void> {
     console.log('[StubWhatsAppSender] Would send to', waId, ':', messages);
   }
