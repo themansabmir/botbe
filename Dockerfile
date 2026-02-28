@@ -2,9 +2,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# install dependencies
+# install dependencies (npm ci fails under npm@10 workspaces)
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 # build TypeScript -> dist
 COPY . .
@@ -17,7 +17,7 @@ ENV NODE_ENV=production
 
 # install only production deps
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # copy compiled output from builder
 COPY --from=builder /app/dist ./dist
